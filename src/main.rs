@@ -13,6 +13,7 @@ use teloxide::{dispatching::{
 }, prelude::*, RequestError, types::{InlineKeyboardButton, InlineKeyboardMarkup}, utils::command::BotCommands};
 use teloxide::dispatching::DefaultKey;
 use teloxide::prelude::*;
+use teloxide::types::{Chat, ParseMode};
 use tokio::time::sleep;
 
 use crate::dptree::di::DependencySupplier;
@@ -38,13 +39,11 @@ async fn main() {
     let b = bot.clone();
     let p = pool.clone();
 
-    tokio::spawn( async move {
-
-
+    tokio::spawn(async move {
         loop {
             println!("hm");
             send_report(&b, &p).await;
-            sleep(Duration::from_millis(3000)).await;
+            sleep(Duration::from_millis(5000)).await;
         }
     });
 
@@ -62,15 +61,24 @@ async fn callback_handler(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     println!("click");
 
-    let result= query!(
-        r#"update reports set is_banned = true where id = $1"#,
-        1234)
-        .execute(&pool)
-        .await?;
 
-    if let Some(report_id) = q.data {
+    if let Some(report) = q.data {
         match q.message {
             Some(Message { id, chat, .. }) => {
+                let ban: char = report.chars().next().unwrap();
+                let report_id: i32 = report[1..report.len()].parse::<i32>().unwrap();
+
+                println!("ban: {} - id: {}", ban, report_id);
+
+                if ban == 'y' {
+                    let result = query!(
+        r#"update reports set is_banned = true where id = $1"#,
+       report_id)
+                        .execute(&pool)
+                        .await?;
+                }
+
+
                 bot.edit_message_reply_markup(chat.id, id).await?;
             }
 
@@ -87,14 +95,37 @@ async fn send_report(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let reports: Vec<Report> = query_as!(Report,
         r#"select * from reports where is_banned IS NULL"#)
-        .fetch_all(pool)
+        .fetch_all(*&pool)
         .await?;
 
-    println!("{}", reports.len());
+    println!("Report length {}", reports.len());
 
-    for report in reports{
-        println!("{}",report.id)
+    if !reports.is_empty() {
+        for report in reports {
+            println!("{}", &report.id);
+
+            let keyboard = InlineKeyboardMarkup::new(vec![
+                vec![
+                    InlineKeyboardButton::callback("Ban user ✅️", format!("y{}", &report.id))
+                ],
+                vec![
+                    InlineKeyboardButton::callback("Cancel report 🚫", format!("n{}", &report.id))
+                ]]);
+
+            //TODO: .parse_mode(ParseMode::Html) and format user_id to link to user
+            bot.send_message(ChatId(-1001758396624),
+                             format!("📋 {} - ✍️ {} - 🧑 {}\n\n{}",
+                                     &report.id, &report.account_id, &report.user_id, &report.message))
+                .reply_markup(keyboard).await.expect("Failed to send message");
+
+            query!(
+        r#"update reports set is_banned = false where id = $1"#,
+        &report.id)
+                .execute(pool)
+                .await?;
+        }
     }
+
 
     Ok(())
 }
