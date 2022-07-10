@@ -1,23 +1,20 @@
 use std::env;
 use std::error::Error;
-use std::ops::Range;
-use std::str::FromStr;
+
+
 use std::time::Duration;
 
 use dotenv::dotenv;
-use sqlx::{PgPool, Pool, Postgres, query, query_as};
+use sqlx::{Pool, Postgres, query, query_as};
 use sqlx::postgres::PgPoolOptions;
-use teloxide::{dispatching::{
-    dialogue::{self, InMemStorage},
-    UpdateHandler,
-}, prelude::*, RequestError, types::{InlineKeyboardButton, InlineKeyboardMarkup}, utils::command::BotCommands};
-use teloxide::dispatching::DefaultKey;
-use teloxide::prelude::*;
-use teloxide::types::{Chat, ParseMode};
+use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup}, utils::command::BotCommands};
+
+
+
 use tokio::time::sleep;
 
-use crate::dptree::di::DependencySupplier;
-use crate::models::{Report};
+
+use crate::models::Report;
 
 mod models;
 
@@ -71,7 +68,7 @@ async fn callback_handler(
                 println!("ban: {} - id: {}", ban, report_id);
 
                 if ban == 'y' {
-                    let result = query!(
+                    let _result = query!(
         r#"update reports set is_banned = true where id = $1"#,
        report_id)
                         .execute(&pool)
@@ -95,7 +92,7 @@ async fn send_report(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let reports: Vec<Report> = query_as!(Report,
         r#"select * from reports where is_banned IS NULL"#)
-        .fetch_all(*&pool)
+        .fetch_all(pool)
         .await?;
 
     println!("Report length {}", reports.len());

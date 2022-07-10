@@ -4,12 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sqlx  = {version = "0.6.0", default-features = false, features = [ "runtime-actix-rustls", "macros", "chrono", "postgres","decimal", "uuid", "json" ]}
-actix-web = "4"
+sqlx = { version = "0.6.0", default-features = false, features = ["runtime-tokio-rustls", "macros", "chrono", "postgres"] }
 chrono = { version = "0.4", features = ["serde"] }
-log = "0.4"
 pretty_env_logger = "0.4"
-tokio = { version =  "1.8", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.8", features = ["rt-multi-thread", "macros"] }
 dotenv = "0.15.0"
 serde = { version = "1.0.137", features = ["derive"] }
 teloxide = { version = "0.9.2", features = ["macros", "auto-send"] }

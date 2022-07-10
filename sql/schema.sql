@@ -1,5 +1,3 @@
-
-
 drop table reports;
 
 CREATE TABLE if NOT exists accounts
@@ -12,7 +10,6 @@ CREATE TABLE if NOT exists accounts
 
 
 
-
 CREATE TABLE if NOT exists reports
 (
     id          INT GENERATED ALWAYS AS IDENTITY,
@@ -21,7 +18,7 @@ CREATE TABLE if NOT exists reports
     message     text      not null,
     reported_at timestamp NOT NULL default current_date,
     --maybe also banned_at ?
-    is_banned     boolean,
+    is_banned   boolean,
     primary key (id),
     CONSTRAINT reported_by
         FOREIGN KEY (account_id) REFERENCES accounts (id)

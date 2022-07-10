@@ -1,6 +1,5 @@
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{NaiveDateTime};
 use serde::{Deserialize, Serialize};
-
 
 #[derive(Deserialize, Serialize)]
 pub struct Report {

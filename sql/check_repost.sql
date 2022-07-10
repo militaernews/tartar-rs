@@ -1,1 +1,3 @@
-select * from reports where is_banned IS NULL;
+select *
+from reports
+where is_banned IS NULL;
