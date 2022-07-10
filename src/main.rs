@@ -13,6 +13,7 @@ use teloxide::{
 };
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup}, utils::command::BotCommands};
 use teloxide::dispatching::update_listeners::webhooks;
+use teloxide::error_handlers::{ErrorHandler, IgnoringErrorHandlerSafe};
 use tokio::sync::mpsc;
 use tokio::time::sleep;
 
@@ -70,7 +71,8 @@ async fn main() {
         .build()
         .setup_ctrlc_handler()
         //FIXME: expected an `Fn<(Infallible,)>` closure, found `()`
-        .dispatch_with_listener(listener, Arc::new(()))
+        .dispatch_with_listener(listener,
+                                Arc::new(IgnoringErrorHandlerSafe))
         .await
 }
 
