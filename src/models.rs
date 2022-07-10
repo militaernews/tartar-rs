@@ -1,4 +1,4 @@
-use chrono::{NaiveDateTime};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]

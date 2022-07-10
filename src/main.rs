@@ -1,21 +1,20 @@
-use std::error::Error;
 use std::{convert::Infallible, env, net::SocketAddr};
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
-use warp::Filter;
-use reqwest::{StatusCode, Url};
-
+use std::error::Error;
+use std::sync::Arc;
 use std::time::Duration;
 
 use dotenv::dotenv;
+use reqwest::Url;
 use sqlx::{Pool, Postgres, query, query_as};
 use sqlx::postgres::PgPoolOptions;
+use teloxide::{
+    prelude::*,
+    types::Update,
+};
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup}, utils::command::BotCommands};
-
-
-
+use teloxide::dispatching::update_listeners::webhooks;
+use tokio::sync::mpsc;
 use tokio::time::sleep;
-
 
 use crate::models::Report;
 
@@ -47,10 +46,32 @@ async fn main() {
         }
     });
 
+    let token = bot.inner().token();
+
+    // Heroku auto defines a port value
+    let port: u16 = env::var("PORT")
+        .expect("PORT env variable is not set")
+        .parse()
+        .expect("PORT env variable value is not an integer");
+
+    let addr = ([0, 0, 0, 0], port).into();
+
+    // Heroku host example: "heroku-ping-pong-bot.herokuapp.com"
+    let host = env::var("HOST").expect("HOST env variable is not set");
+    let url = Url::parse(&format!("https://{host}/webhooks/{token}")).unwrap();
+
+    let listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr, url))
+        .await
+        .expect("Couldn't setup webhook");
+
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![pool])
-        .build().setup_ctrlc_handler().dispatch().await
+        .build()
+        .setup_ctrlc_handler()
+        //FIXME: expected an `Fn<(Infallible,)>` closure, found `()`
+        .dispatch_with_listener(listener, Arc::new(()))
+        .await
 }
 
 
@@ -130,64 +151,5 @@ async fn send_report(
     Ok(())
 }
 
-use teloxide::{
-    dispatching::{
-        stop_token::AsyncStopToken,
-        update_listeners::{self, StatefulListener},
-    },
-    prelude::*,
-    types::Update,
-};
 
 
-async fn handle_rejection(error: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
-    log::error!("Cannot process the request due to: {:?}", error);
-    Ok(StatusCode::INTERNAL_SERVER_ERROR)
-}
-
-pub async fn webhook(bot: AutoSend<Bot>) -> impl update_listeners::UpdateListener<Infallible> {
-    // Heroku auto defines a port value
-    let teloxide_token = env::var("TELOXIDE_TOKEN").expect("TELOXIDE_TOKEN env variable missing");
-    let port: u16 = env::var("PORT")
-        .expect("PORT env variable missing")
-        .parse()
-        .expect("PORT value to be integer");
-    // Heroku host example .: "heroku-ping-pong-bot.herokuapp.com"
-    let host = env::var("HOST").expect("have HOST env variable");
-    let path = format!("bot{teloxide_token}");
-    let url = Url::parse(&format!("https://{host}/{path}")).unwrap();
-
-    bot.set_webhook(url).await.expect("Cannot setup a webhook");
-
-    let (tx, rx) = mpsc::unbounded_channel();
-
-    let server = warp::post()
-        .and(warp::path(path))
-        .and(warp::body::json())
-        .map(move |update: Update| {
-            tx.send(Ok(update)).expect("Cannot send an incoming update from the webhook");
-
-            StatusCode::OK
-        })
-        .recover(handle_rejection);
-
-    let (stop_token, stop_flag) = AsyncStopToken::new_pair();
-
-    let addr = format!("0.0.0.0:{port}").parse::<SocketAddr>().unwrap();
-    let server = warp::serve(server);
-    let (_addr, fut) = server.bind_with_graceful_shutdown(addr, stop_flag);
-
-    // You might want to use serve.key_path/serve.cert_path methods here to
-    // setup a self-signed TLS certificate.
-
-    tokio::spawn(fut);
-    let stream = UnboundedReceiverStream::new(rx);
-
-    fn streamf<S, T>(state: &mut (S, T)) -> &mut S {
-        &mut state.0
-    }
-
-    StatefulListener::new((stream, stop_token), streamf, |state: &mut (_, AsyncStopToken)| {
-        state.1.clone()
-    })
-}
