@@ -65,14 +65,11 @@ async fn main() {
         .await
         .expect("Couldn't setup webhook");
 
-
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![pool])
         .build()
         .setup_ctrlc_handler()
-        //FIXME: expected an `Fn<(Infallible,)>` closure, found `()`
-        .dispatch_with_listener(listener,
-                                Arc::new(IgnoringErrorHandlerSafe))
+        .dispatch_with_listener(listener, Arc::new(IgnoringErrorHandlerSafe))
         .await
 }
 
@@ -84,7 +81,6 @@ async fn callback_handler(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     println!("click");
 
-
     if let Some(report) = q.data {
         match q.message {
             Some(Message { id, chat, .. }) => {
@@ -94,14 +90,11 @@ async fn callback_handler(
                 println!("ban: {} - id: {}", ban, report_id);
 
                 if ban == 'y' {
-                    let _result = query!(
-        r#"update reports set is_banned = true where id = $1"#,
-       report_id)
-                        .execute(&pool)
-                        .await?;
+                    let _result = query!(r#"update reports set is_banned = true where id = $1"#,report_id)
+                        .execute(&pool).await?;
                 }
 
-
+                //maybe edit text and append "reported" or "declined" ?
                 bot.edit_message_reply_markup(chat.id, id).await?;
             }
 
@@ -141,17 +134,10 @@ async fn send_report(
                                      &report.id, &report.account_id, &report.user_id, &report.message))
                 .reply_markup(keyboard).await.expect("Failed to send message");
 
-            query!(
-        r#"update reports set is_banned = false where id = $1"#,
-        &report.id)
-                .execute(pool)
-                .await?;
+            query!(r#"update reports set is_banned = false where id = $1"#,&report.id)
+                .execute(pool).await?;
         }
     }
 
-
     Ok(())
 }
-
-
-
