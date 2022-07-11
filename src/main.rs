@@ -1,20 +1,10 @@
-use std::{convert::Infallible, env, net::SocketAddr};
-use std::error::Error;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{env, error::Error, sync::Arc, time::Duration};
 
 use dotenv::dotenv;
 use reqwest::Url;
-use sqlx::{Pool, Postgres, query, query_as};
-use sqlx::postgres::PgPoolOptions;
-use teloxide::{
-    prelude::*,
-    types::Update,
-};
-use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup}, utils::command::BotCommands};
-use teloxide::dispatching::update_listeners::webhooks;
-use teloxide::error_handlers::{ErrorHandler, IgnoringErrorHandlerSafe};
-use tokio::sync::mpsc;
+use sqlx::{Pool, Postgres, postgres::PgPoolOptions, query, query_as};
+use teloxide::{dispatching::update_listeners::webhooks, error_handlers::IgnoringErrorHandlerSafe,
+               prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, Update}};
 use tokio::time::sleep;
 
 use crate::models::Report;
