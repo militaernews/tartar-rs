@@ -72,23 +72,19 @@ async fn callback_handler(
     println!("click");
 
     if let Some(report) = q.data {
-        match q.message {
-            Some(Message { id, chat, .. }) => {
-                let ban: char = report.chars().next().unwrap();
-                let report_id: i32 = report[1..report.len()].parse::<i32>().unwrap();
+        if let Some(Message { id, chat, .. }) = q.message {
+            let ban: char = report.chars().next().unwrap();
+            let report_id: i32 = report[1..report.len()].parse::<i32>().unwrap();
 
-                println!("ban: {} - id: {}", ban, report_id);
+            println!("ban: {} - id: {}", ban, report_id);
 
-                if ban == 'y' {
-                    let _result = query!(r#"update reports set is_banned = true where id = $1"#,report_id)
-                        .execute(&pool).await?;
-                }
-
-                //maybe edit text and append "reported" or "declined" ?
-                bot.edit_message_reply_markup(chat.id, id).await?;
+            if ban == 'y' {
+                let _result = query!(r#"update reports set is_banned = true where id = $1"#,report_id)
+                    .execute(&pool).await?;
             }
 
-            _ => {}
+            //maybe edit text and append "reported" or "declined" ?
+            bot.edit_message_reply_markup(chat.id, id).await?;
         }
     }
 
