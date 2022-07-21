@@ -46,7 +46,7 @@ async fn main() {
         .parse()
         .expect("PORT env variable value is not an integer");
 
-    let addr: SocketAddr = ([0, 0, 0, 0], port).into();
+    let addr: SocketAddr = ([0, 0, 0, 0], &port+1).into();
 
     // Heroku host example: "heroku-ping-pong-bot.herokuapp.com"
     let host = env::var("HOST").expect("HOST env variable is not set");
@@ -66,7 +66,7 @@ async fn main() {
         .layer(Extension(b))
         .layer(Extension(p));
 
-    let addr2 = SocketAddr::from(([127, 0, 0, 1], 8000));
+    let addr2 = SocketAddr::from(([127, 0, 0, 1], port));
     let sr = axum::Server::bind(&addr2)
         .serve(app.into_make_service());
 
