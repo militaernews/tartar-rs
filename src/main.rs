@@ -46,17 +46,6 @@ async fn main() {
         .parse()
         .expect("PORT env variable value is not an integer");
 
-    let addr: SocketAddr = ([0, 0, 0, 0], 5000).into();
-
-    // Heroku host example: "heroku-ping-pong-bot.herokuapp.com"
-    let host = env::var("HOST").expect("HOST env variable is not set");
-    let url = Url::parse(&format!("https://{host}/webhooks/{token}")).unwrap();
-
-    let listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr, url))
-        .await
-        .expect("Couldn't setup webhook");
-
-
     let app = Router::new()
 
         // .layer(axum_sqlx_tx::Layer::<Postgres>::new(pool))
@@ -70,15 +59,26 @@ async fn main() {
     let sr = axum::Server::bind(&addr2)
         .serve(app.into_make_service());
 
+
+    let addr: SocketAddr = ([0, 0, 0, 0], 5000).into();
+
+
+    let host = env::var("HOST").expect("HOST env variable is not set");
+    let url = Url::parse(&format!("https://{host}/webhooks/{token}")).unwrap();
+
+    let listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr, url))
+        .await
+        .expect("Couldn't setup webhook");
+
+
     let mut dp = Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![pool])
         .build();
-
     let d = dp.setup_ctrlc_handler()
         .dispatch_with_listener(listener, Arc::new(IgnoringErrorHandlerSafe));
 
-    let (_, _) = tokio::join!(sr, d);
 
+    let (_, _) = tokio::join!(sr, d);
 
 }
 
