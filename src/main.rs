@@ -1,13 +1,21 @@
 use std::{env, error::Error, sync::Arc, time::Duration};
+use std::net::SocketAddr;
 
+use axum::{Extension, Json, Router};
+use axum::extract::Path;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Redirect};
+use axum::routing::{get, post};
+use axum_sqlx_tx::Layer;
+//use axum_sqlx_tx::{Layer, Tx};
 use dotenv::dotenv;
 use reqwest::Url;
-use sqlx::{Pool, Postgres, postgres::PgPoolOptions, query, query_as};
+use sqlx::{PgPool, Pool, Postgres, postgres::PgPoolOptions, query, query_as};
 use teloxide::{dispatching::update_listeners::webhooks, error_handlers::IgnoringErrorHandlerSafe,
                prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, Update}};
 use tokio::time::sleep;
 
-use crate::models::Report;
+use crate::models::{ApiError, InputReport, Report};
 
 mod models;
 
@@ -29,13 +37,6 @@ async fn main() {
     let b = bot.clone();
     let p = pool.clone();
 
-    tokio::spawn(async move {
-        loop {
-            println!("hm");
-            send_report(&b, &p).await.unwrap();
-            sleep(Duration::from_millis(5000)).await;
-        }
-    });
 
     let token = bot.inner().token();
 
@@ -45,22 +46,40 @@ async fn main() {
         .parse()
         .expect("PORT env variable value is not an integer");
 
-    let addr = ([0, 0, 0, 0], port).into();
+    let addr: SocketAddr = ([0, 0, 0, 0], port).into();
 
     // Heroku host example: "heroku-ping-pong-bot.herokuapp.com"
     let host = env::var("HOST").expect("HOST env variable is not set");
     let url = Url::parse(&format!("https://{host}/webhooks/{token}")).unwrap();
 
-    let listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr, url))
+    let listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr.clone(), url))
         .await
         .expect("Couldn't setup webhook");
 
-    Dispatcher::builder(bot, handler)
+
+    let app = Router::new()
+
+        // .layer(axum_sqlx_tx::Layer::<Postgres>::new(pool))
+        .route("/", get(redirect_readme))
+        .route("/reports", post(report_user))
+        .route("/users/:user_id", get(user_by_id))
+        .layer(Extension(b))
+        .layer(Extension(p));
+
+    let addr2 = SocketAddr::from(([127, 0, 0, 1], 8000));
+    let sr = axum::Server::bind(&addr2)
+        .serve(app.into_make_service());
+
+    let mut dp = Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![pool])
-        .build()
-        .setup_ctrlc_handler()
-        .dispatch_with_listener(listener, Arc::new(IgnoringErrorHandlerSafe))
-        .await
+        .build();
+
+    let d = dp.setup_ctrlc_handler()
+        .dispatch_with_listener(listener, Arc::new(IgnoringErrorHandlerSafe));
+
+    let (_, _) = tokio::join!(sr, d);
+
+
 }
 
 
@@ -85,6 +104,7 @@ async fn callback_handler(
 
             //maybe edit text and append "reported" or "declined" ?
             bot.edit_message_reply_markup(chat.id, id).await?;
+            bot.edit_message_text(chat.id,id,"WEBHOOK WORKS".to_owned()).await?;
         }
     }
 
@@ -126,4 +146,43 @@ async fn send_report(
     }
 
     Ok(())
+}
+
+async fn redirect_readme() -> Redirect {
+    Redirect::to("https://github.com/PXNX/tartaros-telegram#readme")
+}
+
+
+async fn user_by_id(
+    Extension(pool): Extension<Pool<Postgres>>,
+    Path(user_id): Path<i64>,
+) -> Result<Json<Report>, (StatusCode, Json<ApiError>)> {
+    query_as!(Report, r#"Select * from reports where user_id = $1 and is_banned=true"#, user_id).fetch_one(&pool)
+        .await
+        .map(Json)
+        .map_err(|e|
+            (StatusCode::NOT_FOUND, Json(ApiError {
+                details: e.to_string(),
+            }))
+        )
+}
+
+async fn report_user(
+    Extension(pool): Extension<Pool<Postgres>>,
+    Extension(bot): Extension<AutoSend<Bot>>,
+    report: Json<InputReport>,
+) -> Result<(StatusCode, Json<Report>), Json<ApiError>> {
+    let result = sqlx::query_as!(Report, r#"Insert into reports (user_id, account_id, message) values ($1, $2, $3) returning *"#, report.user_id, 1, report.message).fetch_one(&pool)
+        .await;
+
+    return match result {
+        Ok(res) => {
+            send_report(&bot, &pool).await.unwrap();
+
+            Ok((StatusCode::CREATED, Json(res)))
+        }
+        Err(e) => Err(Json(ApiError {
+            details: e.to_string()
+        }))
+    };
 }
