@@ -46,13 +46,13 @@ async fn main() {
         .parse()
         .expect("PORT env variable value is not an integer");
 
-    let addr: SocketAddr = ([0, 0, 0, 0], &port+1).into();
+    let addr: SocketAddr = ([0, 0, 0, 0], 5000).into();
 
     // Heroku host example: "heroku-ping-pong-bot.herokuapp.com"
     let host = env::var("HOST").expect("HOST env variable is not set");
     let url = Url::parse(&format!("https://{host}/webhooks/{token}")).unwrap();
 
-    let listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr.clone(), url))
+    let listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr, url))
         .await
         .expect("Couldn't setup webhook");
 
