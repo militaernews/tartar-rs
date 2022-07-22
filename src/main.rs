@@ -59,7 +59,7 @@ async fn main() {
     let sr = axum::Server::bind(&addr2)
         .serve(app.into_make_service());
 
-
+/*
     let addr: SocketAddr = ([0, 0, 0, 0], 5000).into();
 
 
@@ -69,13 +69,15 @@ async fn main() {
     let listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr, url))
         .await
         .expect("Couldn't setup webhook");
+         */
 
 
     let mut dp = Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![pool])
         .build();
     let d = dp.setup_ctrlc_handler()
-        .dispatch_with_listener(listener, Arc::new(IgnoringErrorHandlerSafe));
+        .dispatch();
+      //  .dispatch_with_listener(listener, Arc::new(IgnoringErrorHandlerSafe));
 
 
     let (_, _) = tokio::join!(sr, d);
@@ -104,7 +106,7 @@ async fn callback_handler(
 
             //maybe edit text and append "reported" or "declined" ?
             bot.edit_message_reply_markup(chat.id, id).await?;
-            bot.edit_message_text(chat.id,id,"WEBHOOK WORKS yey".to_owned()).await?;
+            bot.edit_message_text(chat.id,id,"WEBHOOK WORKS ye2y".to_owned()).await?;
 
             println!("test");
         }
