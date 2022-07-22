@@ -59,13 +59,13 @@ async fn main() {
     let sr = axum::Server::bind(&addr2)
         .serve(app.into_make_service());
 
-    let addr: SocketAddr = ([0, 0, 0, 0], 5000).into();
+   // let addr: SocketAddr = ([0, 0, 0, 0], 5000).into();
 
 
     let host = env::var("HOST").expect("HOST env variable is not set");
     let url = Url::parse(&format!("https://{host}/webhooks/{token}")).unwrap();
 
-    let listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr, url))
+    let listener = webhooks::axum(bot.clone(), webhooks::Options::new(*&addr2, url))
         .await
         .expect("Couldn't setup webhook");
 
