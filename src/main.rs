@@ -6,7 +6,6 @@ use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect};
 use axum::routing::{get, post};
-use axum_sqlx_tx::Layer;
 //use axum_sqlx_tx::{Layer, Tx};
 use dotenv::dotenv;
 use reqwest::Url;
@@ -15,7 +14,6 @@ use teloxide::{dispatching::update_listeners::webhooks, error_handlers::Ignoring
                prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, Update}};
 use teloxide::adaptors::DefaultParseMode;
 use teloxide::types::ParseMode;
-use tokio::time::sleep;
 
 use crate::models::{ApiError, InputReport, Report};
 
