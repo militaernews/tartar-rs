@@ -13,6 +13,8 @@ use reqwest::Url;
 use sqlx::{PgPool, Pool, Postgres, postgres::PgPoolOptions, query, query_as};
 use teloxide::{dispatching::update_listeners::webhooks, error_handlers::IgnoringErrorHandlerSafe,
                prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, Update}};
+use teloxide::adaptors::DefaultParseMode;
+use teloxide::types::ParseMode;
 use tokio::time::sleep;
 
 use crate::models::{ApiError, InputReport, Report};
@@ -25,7 +27,7 @@ async fn main() {
     pretty_env_logger::init();
     log::info!("Starting tartaros-telegram...");
 
-    let bot: AutoSend<Bot> = Bot::from_env().auto_send();
+    let bot: AutoSend<DefaultParseMode<Bot>> = Bot::from_env().parse_mode(ParseMode::Html).auto_send();
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -38,7 +40,7 @@ async fn main() {
     let p = pool.clone();
 
 
-    let token = bot.inner().token();
+    let token = bot.inner().inner().token();
 
     // Heroku auto defines a port value
     let port: u16 = env::var("PORT")
@@ -85,7 +87,7 @@ async fn main() {
 
 async fn callback_handler(
     q: CallbackQuery,
-    bot: AutoSend<Bot>,
+    bot: AutoSend<DefaultParseMode<Bot>>,
     pool: Pool<Postgres>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     println!("click");
@@ -112,7 +114,7 @@ async fn callback_handler(
 }
 
 async fn send_report(
-    bot: &AutoSend<Bot>,
+    bot: &AutoSend<DefaultParseMode<Bot>>,
     pool: &Pool<Postgres>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let reports: Vec<Report> = query_as!(Report,
@@ -169,7 +171,7 @@ async fn user_by_id(
 
 async fn report_user(
     Extension(pool): Extension<Pool<Postgres>>,
-    Extension(bot): Extension<AutoSend<Bot>>,
+    Extension(bot): Extension<AutoSend<DefaultParseMode<Bot>>>,
     report: Json<InputReport>,
 ) -> Result<(StatusCode, Json<Report>), Json<ApiError>> {
     let result = sqlx::query_as!(Report, r#"Insert into reports (user_id, account_id, message) values ($1, $2, $3) returning *"#, report.user_id, 1, report.message).fetch_one(&pool)
