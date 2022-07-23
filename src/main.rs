@@ -54,13 +54,6 @@ async fn main() {
         .await
         .expect("Couldn't setup webhook");
 
-    let mut dp = Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![pool])
-        .enable_ctrlc_handler()
-        .build();
-    let d = dp
-        .dispatch_with_listener(listener.0, Arc::new(IgnoringErrorHandlerSafe));
-
     let app = listener.2
         .route("/", get(redirect_readme))
         .route("/reports", post(report_user))
@@ -70,6 +63,16 @@ async fn main() {
 
     let sr = axum::Server::bind(&addr)
         .serve(app.into_make_service());
+
+
+    let mut dp = Dispatcher::builder(bot, handler)
+        .dependencies(dptree::deps![pool])
+   //     .enable_ctrlc_handler()
+        .build();
+    let d = dp
+        .dispatch_with_listener(listener.0, Arc::new(IgnoringErrorHandlerSafe));
+
+
 
     let (_, _) = tokio::join!(sr, d);
 }
