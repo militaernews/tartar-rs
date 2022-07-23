@@ -45,7 +45,7 @@ async fn main() {
         .parse()
         .expect("PORT env variable value is not an integer");
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
     let host = env::var("HOST").expect("HOST env variable is not set");
     let url = Url::parse(&format!("https://{host}/webhooks/{token}")).unwrap();
