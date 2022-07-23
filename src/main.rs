@@ -37,7 +37,6 @@ async fn main() {
     let b = bot.clone();
     let p = pool.clone();
 
-
     let token = bot.inner().inner().token();
 
     // Heroku auto defines a port value
@@ -46,41 +45,33 @@ async fn main() {
         .parse()
         .expect("PORT env variable value is not an integer");
 
-    let app = Router::new()
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
 
-        // .layer(axum_sqlx_tx::Layer::<Postgres>::new(pool))
+    let host = env::var("HOST").expect("HOST env variable is not set");
+    let url = Url::parse(&format!("https://{host}/webhooks/{token}")).unwrap();
+
+    let listener = webhooks::axum_to_router(bot.clone(), webhooks::Options::new(*&addr, url))
+        .await
+        .expect("Couldn't setup webhook");
+
+    let mut dp = Dispatcher::builder(bot, handler)
+        .dependencies(dptree::deps![pool])
+        .enable_ctrlc_handler()
+        .build();
+    let d = dp
+        .dispatch_with_listener(listener.0, Arc::new(IgnoringErrorHandlerSafe));
+
+    let app = listener.2
         .route("/", get(redirect_readme))
         .route("/reports", post(report_user))
         .route("/users/:user_id", get(user_by_id))
         .layer(Extension(b))
         .layer(Extension(p));
 
-    let addr2 = SocketAddr::from(([127, 0, 0, 1], port));
-    let sr = axum::Server::bind(&addr2)
+    let sr = axum::Server::bind(&addr)
         .serve(app.into_make_service());
 
-   // let addr: SocketAddr = ([0, 0, 0, 0], 5000).into();
-
-
-    let host = env::var("HOST").expect("HOST env variable is not set");
-    let url = Url::parse(&format!("https://{host}/webhooks/{token}")).unwrap();
-
-    let listener = webhooks::axum(bot.clone(), webhooks::Options::new(*&addr2, url))
-        .await
-        .expect("Couldn't setup webhook");
-
-
-
-    let mut dp = Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![pool])
-        .build();
-    let d = dp.setup_ctrlc_handler()
-      //  .dispatch();
-      .dispatch_with_listener(listener, Arc::new(IgnoringErrorHandlerSafe));
-
-
     let (_, _) = tokio::join!(sr, d);
-
 }
 
 
@@ -105,7 +96,7 @@ async fn callback_handler(
 
             //maybe edit text and append "reported" or "declined" ?
             bot.edit_message_reply_markup(chat.id, id).await?;
-            bot.edit_message_text(chat.id,id,"WEBHOOK WORKS ye2y".to_owned()).await?;
+            bot.edit_message_text(chat.id, id, "WEBHOOK WORKS yeu2y".to_owned()).await?;
 
             println!("test");
         }
