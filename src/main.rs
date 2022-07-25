@@ -19,6 +19,8 @@ use crate::models::{ApiError, InputReport, Report};
 
 mod models;
 
+const REPORT_GROUP:ChatId = ChatId(-1001758396624);
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -33,6 +35,7 @@ async fn main() {
 
     let handler = dptree::entry()
         .branch(Update::filter_callback_query().endpoint(callback_handler));
+    //TODO: filter on report_group
 
     let b = bot.clone();
     let p = pool.clone();
@@ -58,6 +61,7 @@ async fn main() {
         .route("/", get(redirect_readme))
         .route("/reports", post(report_user))
         .route("/users/:user_id", get(user_by_id))
+        .route("/users", post(users_by_id))
         .layer(Extension(b))
         .layer(Extension(p));
 
@@ -132,7 +136,7 @@ async fn send_report(
                 ]]);
 
             //TODO: .parse_mode(ParseMode::Html) and format user_id to link to user
-            bot.send_message(ChatId(-1001758396624),
+            bot.send_message(REPORT_GROUP,
                              format!("📋 {} - ✍️ {} - 🧑 {}\n\n{}",
                                      &report.id, &report.account_id, &report.user_id, &report.message))
                 .reply_markup(keyboard).await.expect("Failed to send message");
@@ -149,6 +153,20 @@ async fn redirect_readme() -> Redirect {
     Redirect::to("https://github.com/PXNX/tartaros-telegram#readme")
 }
 
+
+async fn users_by_id(
+    Extension(pool): Extension<Pool<Postgres>>,
+    user_ids : Json<Vec<i64>>,
+) -> Result<Json<Report>, (StatusCode, Json<ApiError>)> {
+    query_as!(Report, r#"Select * from reports where user_id in $1 and is_banned=true"#, user_ids).fetch_all(&pool)
+        .await
+        .map(Json)
+        .map_err(|e|
+            (StatusCode::NOT_FOUND, Json(ApiError {
+                details: e.to_string(),
+            }))
+        )
+}
 
 async fn user_by_id(
     Extension(pool): Extension<Pool<Postgres>>,
