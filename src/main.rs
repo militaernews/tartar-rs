@@ -42,7 +42,7 @@ async fn main() {
     let b = bot.clone();
     let p = pool.clone();
 
-    let listener = webhooks::axum_to_router(bot.clone(), webhooks::Options::new(*&addr, url))
+    let listener = webhooks::axum_to_router(bot.clone(), webhooks::Options::new(addr, url))
         .await
         .expect("Couldn't setup webhook");
 
@@ -75,7 +75,7 @@ async fn callback_handler(
     println!("click");
 
     if let Some(report) = q.data {
-        if let Some(Message { id, chat, .. }) = q.message {
+        if let Some(message) = q.message {
             let ban: char = report.chars().next().unwrap();
             let report_id: i32 = report[1..report.len()].parse::<i32>().unwrap();
 
@@ -87,8 +87,8 @@ async fn callback_handler(
             }
 
             //maybe edit text and append "reported" or "declined" ?
-            bot.edit_message_reply_markup(chat.id, id).await?;
-            bot.edit_message_text(chat.id, id, "WEBHOOK WORKS yeu2y".to_owned()).await?;
+            bot.edit_message_reply_markup(message.chat.id, message.id).await?;
+            bot.edit_message_text(message.chat.id, message.id, format!("{} User was banned ✅️", message.text().unwrap())).await?;
 
             println!("test");
         }
