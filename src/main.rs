@@ -81,16 +81,21 @@ async fn callback_handler(
 
             println!("ban: {} - id: {}", ban, report_id);
 
-            if ban == 'y' {
-                let _result = query!(r#"update reports set is_banned = true where id = $1"#,report_id)
-                    .execute(&pool).await?;
+            match ban {
+                'y' => {
+                    let _result = query!(r#"update reports set is_banned = true where id = $1"#,report_id)
+                        .execute(&pool).await?;
+                    bot.edit_message_text(message.chat.id, message.id, format!("{}\n\nUser banned ✅️", message.text().unwrap())).await?;
+                }
+
+                'n' => {
+                    bot.edit_message_text(message.chat.id, message.id, format!("{}\n\nReport cancelled 🚫️", message.text().unwrap())).await?;
+                }
+
+                _ => {}
             }
 
-            //maybe edit text and append "reported" or "declined" ?
             bot.edit_message_reply_markup(message.chat.id, message.id).await?;
-            bot.edit_message_text(message.chat.id, message.id, format!("{} User was banned ✅️", message.text().unwrap())).await?;
-
-            println!("test");
         }
     }
 
