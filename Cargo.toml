@@ -3,14 +3,28 @@ name = "tartar-rs"
 version = "0.1.0"
 edition = "2021"
 
+[profile.dev]
+opt-level = 0
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+
 [dependencies]
-teloxide = { version = "0.10.0", features = ["macros", "auto-send", "webhooks-axum"] }
-axum = { version = "0.5.12", features = ["headers" ] }
-sqlx = { version = "0.6.0", default-features = false, features = ["runtime-tokio-rustls", "macros", "chrono", "postgres"] }
+teloxide = { path="../teloxide/crates/teloxide", features = ["macros","webhooks-axum"] }
+teloxide-core = { path="../teloxide/crates/teloxide-core" }
+teloxide-macros = { path="../teloxide/crates/teloxide-macros" }
 dotenv = "0.15.0"
-chrono = { version = "0.4", features = ["serde"] }
-pretty_env_logger = "0.4"
-tokio = { version = "1.8", features = ["rt-multi-thread", "macros"] }
-serde = { version = "1.0.137", features = ["derive"] }
-log = "0.4.17"
-reqwest = "0.11.11"
+pretty_env_logger = "0.5.0"
+log = "0.4.21"
+reqwest = "0.12.5"
+anyhow = "1.0.86"
+axum = { version = "0.7.5", features = ["macros", "ws"] }
+chrono = { version = "0.4.38", features = ["serde"] }
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.118"
+serde_with = "3.8.1"
+tokio = { version = "1.38.0", features = ["full"] }
+sqlx = { version = "0.7.4", features = ["postgres", "runtime-tokio", "tls-rustls", "macros", "migrate", "time","chrono",] }
