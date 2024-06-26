@@ -38,24 +38,15 @@ pub async fn report_user(
     Extension(bot): Extension<DefaultParseMode<Bot>>,
     report: Json<InputReport>,
 ) -> Result<impl IntoResponse, AppError> {
-    let result = query_as!(Report, r#"Insert into reports (user_id, account_id, message) values ($1, $2, $3) returning *"#,
+    let res = query_as!(Report, r#"Insert into reports (user_id, account_id, message) values ($1, $2, $3) returning *"#,
         report.user_id, 1,
         report.message)
         .fetch_one(&db_pool)
-        .await;
+        .await?;
 
-    return match result {
-        Ok(res) => {
-            send_report(&bot, db_pool).await?;
+    send_report(&bot, db_pool).await?;
 
-            Ok((StatusCode::CREATED, Json(res)))
-        }
-        Err(e) => Err(AppError {
-            code: StatusCode::BAD_REQUEST,
-
-            message: e.to_string(),
-        })
-    };
+    Ok((StatusCode::CREATED, Json(res)))
 }
 
 
