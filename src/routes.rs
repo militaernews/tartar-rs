@@ -25,10 +25,10 @@ pub async fn user_by_id(
         .await
         .map(Json)
         .map_err(|e|
-            AppError {
-                code: StatusCode::NOT_FOUND,
-                message: e.to_string(),
-            }
+        AppError {
+            code: StatusCode::NOT_FOUND,
+            message: e.to_string(),
+        }
         )
 }
 
@@ -36,29 +36,33 @@ pub async fn user_by_id(
 pub async fn report_user(
     Extension(db_pool): Extension<PgPool>,
     Extension(bot): Extension<DefaultParseMode<Bot>>,
-
     report: Json<InputReport>,
 ) -> Result<impl IntoResponse, AppError> {
-   query_as!(Report, r#"Insert into reports (user_id, account_id, message) values ($1, $2, $3) returning *"#, report.user_id, 1, report.message)
+    let result = query_as!(Report, r#"Insert into reports (user_id, account_id, message) values ($1, $2, $3) returning *"#,
+        report.user_id, 1,
+        report.message)
         .fetch_one(&db_pool)
-        .await.map(|res|async  {
-        send_report(&bot, db_pool).await?;
+        .await;
 
-        Ok((StatusCode::CREATED, Json(res)))
-    }  )
-        .map_err(|e| AppError{
-            code: StatusCode::NOT_FOUND,
+    return match result {
+        Ok(res) => {
+            send_report(&bot, db_pool).await?;
+
+            Ok((StatusCode::CREATED, Json(res)))
+        }
+        Err(e) => Err(AppError {
+            code: StatusCode::BAD_REQUEST,
+
             message: e.to_string(),
         })
-
-
+    };
 }
 
 
 pub async fn send_report(
-   bot: &DefaultParseMode<Bot>,
-   db_pool: PgPool,
-) -> Result<impl IntoResponse, AppError> {
+    bot: &DefaultParseMode<Bot>,
+    db_pool: PgPool,
+) -> Result<(), AppError> {
     let reports: Vec<Report> = query_as!(Report,
         r#"select * from reports where is_banned IS NULL"#)
         .fetch_all(&db_pool)
