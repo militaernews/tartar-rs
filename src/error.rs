@@ -8,7 +8,7 @@ pub struct AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        println!("AppError: {}", self.message);
+        eprintln!("AppError: {}", self.message);
         (self.code, self.message ).into_response()
     }
 }

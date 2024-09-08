@@ -1,13 +1,13 @@
-use axum::{Extension, Json};
 use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect};
-use sqlx::{PgPool, query, query_as};
+use axum::{Extension, Json};
+use sqlx::{query, query_as, PgPool};
 use teloxide::adaptors::DefaultParseMode;
-use teloxide::Bot;
 use teloxide::payloads::SendMessageSetters;
 use teloxide::prelude::{ChatId, Requester};
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
+use teloxide::Bot;
 
 use crate::error::AppError;
 use crate::models::{InputReport, Report};
@@ -21,15 +21,14 @@ pub async fn user_by_id(
     Extension(db_pool): Extension<PgPool>,
     Path(user_id): Path<i64>,
 ) -> Result<impl IntoResponse, AppError> {
-    query_as!(Report, r#"Select * from reports where user_id = $1 and is_banned=true"#, user_id).fetch_one(&db_pool)
+    query_as!(Report, r#"Select * from reports where user_id = $1 and is_banned=true"#, user_id)
+        .fetch_one(&db_pool)
         .await
         .map(Json)
-        .map_err(|e|
-        AppError {
+        .map_err(|e| AppError {
             code: StatusCode::NOT_FOUND,
             message: e.to_string(),
-        }
-        )
+        })
 }
 
 
